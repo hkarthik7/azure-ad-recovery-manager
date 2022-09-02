@@ -1,0 +1,4 @@
+bin/
+results
+script.ps1
+*.db
