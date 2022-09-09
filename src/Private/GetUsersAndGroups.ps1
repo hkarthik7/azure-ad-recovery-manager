@@ -44,12 +44,12 @@ function GetUsersAndGroups {
                     }                    
                 }
 
-                $backupOutput = [PSCustomObject]@{
+                $backupOutput = [BackupOutput]@{
                     Users  = $usersToAdd
                     Groups = $groupsToAdd
                 }   
             } else {
-                $backupOutput = [PSCustomObject]@{
+                $backupOutput = [BackupOutput]@{
                     Users  = $users
                     Groups = $groups
                 }
@@ -104,6 +104,7 @@ function GetUsersAndGroups {
                                         DeletedDateTime = $_.DeletedDateTime
                                         Name            = $_.DisplayName
                                         Id              = $_.Id
+                                        OdataType       = $_.OdataType
                                     }
                                 }
                         
@@ -159,6 +160,7 @@ function GetUsersAndGroups {
                                 DeletedDateTime = $_.DeletedDateTime
                                 Name            = $_.DisplayName
                                 Id              = $_.Id
+                                OdataType       = $_.OdataType
                             }
                         }
                 
