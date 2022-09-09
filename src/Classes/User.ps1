@@ -3,4 +3,5 @@ class User {
     [string] $DisplayName
     [string] $Mail
     [string] $UserPrincipalName
+    [string] $OdataType
 }
