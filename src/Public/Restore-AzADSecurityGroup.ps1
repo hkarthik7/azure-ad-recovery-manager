@@ -42,21 +42,21 @@ function Restore-AzADSecurityGroup {
                         $newGroup = Get-AzADGroup -ObjectId $newGrp.Id
     
                         if ($roleAssignment) {
-                            Write-Verbose "Waiting for group to get reflected"
-                            Start-Sleep -Seconds 30 # Wait for group to get reflected
 
-                            $roleAssignment | ForEach-Object {
-                                $null = New-AzRoleAssignment `
-                                    -ObjectId $newGroup.Id `
-                                    -RoleDefinitionName $_.RoleDefinitionName `
-                                    -Scope $_.Scope
-                            }
+                            $job = Start-Job -Name 'role-assignment' -ScriptBlock {
+                                param([object[]] $RoleAssignment, [string] $GroupId)
+
+                                Start-Sleep -Seconds 60 # Wait for group to get reflected
+                                $RoleAssignment | ForEach-Object {
+                                    New-AzRoleAssignment -ObjectId $GroupId -RoleDefinitionId $_.RoleDefinitionId -Scope $_.Scope
+                                }
+                            } -ArgumentList ($roleAssignment, $newGroup.Id)
                         }
     
                         $allGroups += [Group]@{
                             Id = $newGroup.Id
                             DisplayName = $newGroup.DisplayName
-                            MailNickname = $_.MailNickname
+                            MailNickname = $newGroup.MailNickname
                             Description = $newGroup.Description
                             CreatedDateTime = $newGroup.CreatedDateTime
                             IsAssignableToRole = $newGroup.IsAssignableToRole
@@ -72,8 +72,8 @@ function Restore-AzADSecurityGroup {
                         if ($members) {
                             Add-AzADGroupMember -TargetGroupObjectId $newGroup.Id -MemberObjectId $members.Members.UserId -WarningAction SilentlyContinue
                             foreach ($userId in $members.Members.UserId) {
-                                Invoke-SqliteQuery -DataSource (GetDatabasePath) -Query "INSERT INTO usersandgroups (userid, groupid, displayname) VALUES (
-                                    (SELECT id FROM users WHERE id = '$userId'), '$($newGroup.Id)', '$($newGroup.DisplayName)'
+                                Invoke-SqliteQuery -DataSource (GetDatabasePath) -Query "INSERT INTO usersandgroups (userid, groupid, odatatype, displayname) VALUES (
+                                    (SELECT id FROM users WHERE id = '$userId'), '$($newGroup.Id)', '$($newGroup.odatatype)', '$($newGroup.DisplayName)'
                                 )"
                             }
                         }
@@ -81,6 +81,29 @@ function Restore-AzADSecurityGroup {
                         Write-Warning "Group $((Find-Group -Id $groupId).DisplayName) already exists."
                     }
                 }
+
+                $report = [RestoreReport]@{
+                    RestoredDateTime = Get-Date
+                    GroupsRestored = $allGroups.DisplayName -join ", "
+                }
+
+                if ($roleAssignment -and $job) {
+                    $roleAssignmentResults = $job | Wait-Job | Receive-Job
+
+                    if ($roleAssignmentResults) {
+                        Write-Verbose "Successfully completed restoring the role assignment for group(s) [$($roleAssignmentResults.DisplayName -join ", ")]."
+                        Add-Member -InputObject $report -MemberType NoteProperty -Name 'RoleAssignmentName' -Value ($roleAssignmentResults.RoleAssignmentName -join ", ") -TypeName RestoreReport -Force
+                        Add-Member -InputObject $report -MemberType NoteProperty -Name 'RoleAssignmentId' -Value ($roleAssignmentResults.RoleAssignmentId -join ", ") -TypeName RestoreReport -Force
+                        Add-Member -InputObject $report -MemberType NoteProperty -Name 'Scope' -Value ($roleAssignmentResults.Scope -join ", ") -TypeName RestoreReport -Force
+                        Add-Member -InputObject $report -MemberType NoteProperty -Name 'DisplayName' -Value ($roleAssignmentResults.DisplayName -join ", ") -TypeName RestoreReport -Force
+                        Add-Member -InputObject $report -MemberType NoteProperty -Name 'SignInName' -Value ($roleAssignmentResults.SignInName -join ", ") -TypeName RestoreReport -Force
+                        Add-Member -InputObject $report -MemberType NoteProperty -Name 'RoleDefinitionName' -Value ($roleAssignmentResults.RoleDefinitionName -join ", ") -TypeName RestoreReport -Force
+                        Add-Member -InputObject $report -MemberType NoteProperty -Name 'RoleDefinitionId' -Value ($roleAssignmentResults.RoleDefinitionId -join ", ") -TypeName RestoreReport -Force
+                        Add-Member -InputObject $report -MemberType NoteProperty -Name 'ObjectId' -Value ($roleAssignmentResults.ObjectId -join ", ") -TypeName RestoreReport -Force
+                    }
+                }
+
+                $report | Export-Csv -Path "$(Split-Path -Path (GetDatabasePath) -Parent)\Azure-AD-Restore-Report.csv" -Encoding utf8 -Force -NoTypeInformation -Append
 
                 return $allGroups
                 

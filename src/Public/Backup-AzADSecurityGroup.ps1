@@ -10,18 +10,19 @@ function Backup-AzADSecurityGroup {
         $functionName = $MyInvocation.MyCommand.Name
         Write-Verbose "[$(Get-Date -Format s)] : $functionName : Begin function.."
 
-        $schema = [PSCustomObject]@{
+        $schema = [Schema]@{
             Tables = @(
-                [PSCustomObject]@{
+                [Table]@{
                     TableName = 'users'
                     Columns = @(
                         "id VARCHAR(50) PRIMARY KEY",
                         "displayname TEXT",
                         "mail TEXT",
+                        "odatatype TEXT",
                         "userprincipalname TEXT"
                     )
                 },
-                [PSCustomObject]@{
+                [Table]@{
                     TableName = 'groups'
                     Columns = @(
                         "id VARCHAR(50) PRIMARY KEY",
@@ -36,11 +37,12 @@ function Backup-AzADSecurityGroup {
                         "securityidentifier TEXT"
                     )
                 },
-                [PSCustomObject]@{
+                [Table]@{
                     TableName = 'usersandgroups'
                     Columns = @(
                         "groupid VARCHAR(50)",
                         "displayname TEXT",
+                        "odatatype TEXT",
                         "userid VARCHAR(50) REFERENCES users(id)",
                         "PRIMARY KEY (groupid, userid)"
                     )
@@ -51,88 +53,124 @@ function Backup-AzADSecurityGroup {
 
     process {
         try {
-            if ($Incremental.IsPresent) { $backupOutput = GetUsersAndGroups -AsJob -Incremental }
-            else { $backupOutput = GetUsersAndGroups -AsJob }
+            if ((GetDatabasePath)) {
+                if ($Incremental.IsPresent) { $backupOutput = GetUsersAndGroups -AsJob -Incremental }
+                else { $backupOutput = GetUsersAndGroups -AsJob }
+                    
+                # 1) Create database
+                $database = CreateDatabase
                 
-            # 1) Create database
-            $database = CreateDatabase
-            
-            # 2) Create tables (users, groups and usersandgroups)
-            foreach ($table in $schema.Tables) {
-                CreateTable -TableName $table.TableName -Columns $table.Columns
-            
-                if ($table.TableName -eq 'users') {
-                    # insert data
-                    if ($backupOutput.Users) {
-                        $usersDataTable = $backupOutput.Users | ForEach-Object {
-                            [User]@{
-                                Id = $_.Id
-                                DisplayName = $_.DisplayName
-                                Mail = if (!([string]::IsNullOrEmpty($_.Mail))) { $_.Mail } else { $null }
-                                UserPrincipalName = if (!([string]::IsNullOrEmpty($_.UserPrincipalName))) { $_.UserPrincipalName } else { $null }
-                            }
-                        } | Out-DataTable
-                        
-                        Invoke-SqliteBulkCopy -DataTable $usersDataTable -DataSource $database -Table $table.TableName -ConflictClause Ignore -Force
-                    }
-                }
-            
-                if ($table.TableName -eq 'groups') {
-                    if ($backupOutput.Groups) {
-                        $groupsDataTable = $backupOutput.Groups | Where-Object { !($_.MailEnabled) } | ForEach-Object {
-                            [Group]@{
-                                Id = $_.Id
-                                DisplayName = $_.DisplayName
-                                MailNickname = $_.MailNickname
-                                Description = $_.Description
-                                CreatedDateTime = if (!([string]::IsNullOrEmpty($_.CreatedDateTime))) { (Get-Date $_.CreatedDateTime -Format s) } else { $null }
-                                IsAssignableToRole = $_.IsAssignableToRole
-                                Owner = $_.Owner
-                                RenewedDateTime = if (!([string]::IsNullOrEmpty($_.RenewedDateTime))) { (Get-Date $_.RenewedDateTime -Format s) } else { $null }
-                                SecurityEnabled = $_.SecurityEnabled
-                                SecurityIdentifier = $_.SecurityIdentifier
-                            }
-                        } | Out-DataTable
-                        
-                        Invoke-SqliteBulkCopy -DataTable $groupsDataTable -DataSource $database -Table $table.TableName -ConflictClause Ignore -Force
-                    }
-                }
-            
-                if ($table.TableName -eq 'usersandgroups') {
-                    $results = Query -TableName $table.TableName
-                    if ($results) {
-                        $backupOutput.UsersAndGroups = $backupOutput.UsersAndGroups | ForEach-Object {
-                            if ($_.GroupId -notin $results.groupid) {
-                                $_
-                            }
+                # 2) Create tables (users, groups and usersandgroups)
+                foreach ($table in $schema.Tables) {
+                    CreateTable -TableName $table.TableName -Columns $table.Columns
+                
+                    if ($table.TableName -eq 'users') {
+                        # insert data
+                        if ($backupOutput.Users) {
+                            $usersDataTable = $backupOutput.Users | ForEach-Object {
+                                [User]@{
+                                    Id = $_.Id
+                                    DisplayName = $_.DisplayName
+                                    Mail = if (!([string]::IsNullOrEmpty($_.Mail))) { $_.Mail } else { $null }
+                                    UserPrincipalName = if (!([string]::IsNullOrEmpty($_.UserPrincipalName))) { $_.UserPrincipalName } else { $null }
+                                    OdataType = $_.OdataType
+                                }
+                            } | Out-DataTable
+                            
+                            Invoke-SqliteBulkCopy -DataTable $usersDataTable -DataSource $database -Table $table.TableName -ConflictClause Ignore -Force
                         }
                     }
-
-                    if ($backupOutput.UsersAndGroups) {
-                        $relationship = $backupOutput.UsersAndGroups | ForEach-Object {
-                            [UserAndGroup]@{
-                                GroupId = $_.GroupId
-                                DisplayName = $_.GroupName
-                                UserId = @($_.Users.Id)
-                            }
-                        } | Select-Object * -Unique
-                        
-                        $queryBuilder = [System.Text.StringBuilder]::new()
-                        $null = $queryBuilder.AppendLine("INSERT INTO $($table.TableName) (userid, groupid, displayname) ")
-                        $null = $queryBuilder.AppendLine("VALUES ")
-                        
-                        foreach ($value in $relationship) {
-                            foreach ($userId in $value.UserId) {
-                                $null = $queryBuilder.AppendLine("((SELECT id FROM users WHERE id = '$userId'), '$($value.groupid)', '$($value.displayname)'), ")
+                
+                    if ($table.TableName -eq 'groups') {
+                        if ($backupOutput.Groups) {
+                            $groupsDataTable = $backupOutput.Groups | Where-Object { !($_.MailEnabled) } | ForEach-Object {
+                                [Group]@{
+                                    Id = $_.Id
+                                    DisplayName = $_.DisplayName
+                                    MailNickname = $_.MailNickname
+                                    Description = $_.Description
+                                    CreatedDateTime = if (!([string]::IsNullOrEmpty($_.CreatedDateTime))) { (Get-Date $_.CreatedDateTime -Format s) } else { $null }
+                                    IsAssignableToRole = $_.IsAssignableToRole
+                                    Owner = $_.Owner
+                                    RenewedDateTime = if (!([string]::IsNullOrEmpty($_.RenewedDateTime))) { (Get-Date $_.RenewedDateTime -Format s) } else { $null }
+                                    SecurityEnabled = $_.SecurityEnabled
+                                    SecurityIdentifier = $_.SecurityIdentifier
+                                }
+                            } | Out-DataTable
+                            
+                            Invoke-SqliteBulkCopy -DataTable $groupsDataTable -DataSource $database -Table $table.TableName -ConflictClause Ignore -Force
+                        }
+                    }
+                
+                    if ($table.TableName -eq 'usersandgroups') {
+                        $results = Query -TableName $table.TableName
+                        if ($results) {
+                            $backupOutput.UsersAndGroups = $backupOutput.UsersAndGroups | ForEach-Object {
+                                if ($_.GroupId -notin $results.groupid) {
+                                    $_
+                                }
                             }
                         }
-                        
-                        Invoke-SqliteQuery -DataSource $database -Query ($queryBuilder.ToString().Trim().TrimEnd(","))
+    
+                        if ($backupOutput.UsersAndGroups) {
+                            $relationship = $backupOutput.UsersAndGroups | ForEach-Object {
+                                [UserAndGroup]@{
+                                    GroupId = $_.GroupId
+                                    DisplayName = $_.GroupName
+                                    OdataType = @($_.Users.OdataType)
+                                    UserId = @($_.Users.Id)
+                                }
+                            }
+    
+                            # A group can contain security group(s), device(s), spn(s) and user(s).
+                            # Adding the group memebers id to users table to form many to many relationship.
+                            $usersTable = $schema.Tables | Where-Object { $_.TableName -eq 'users' }
+                            $userTableQueryBuilder = [System.Text.StringBuilder]::new()
+                            $null = $userTableQueryBuilder.AppendLine("INSERT OR IGNORE INTO $($usersTable.TableName) (id, odatatype, displayname) ")
+                            $null = $userTableQueryBuilder.AppendLine("VALUES ")
+    
+                            foreach ($entry in $backupOutput.UsersAndGroups) {
+                                foreach ($user in $entry.Users) {
+                                    if ($user.Name.Contains("'")) {
+                                        $null = $userTableQueryBuilder.AppendLine("('$($user.Id)', '$($user.OdataType)', '$($user.Name.Replace("'", "''"))'), ")
+                                    } else {
+                                        $null = $userTableQueryBuilder.AppendLine("('$($user.Id)', '$($user.OdataType)', '$($user.Name)'), ")
+                                    }
+                                }
+                            }
+    
+                            Invoke-SqliteQuery -DataSource $database -Query ($userTableQueryBuilder.ToString().Trim().TrimEnd(","))
+                            
+                            $queryBuilder = [System.Text.StringBuilder]::new()
+                            $null = $queryBuilder.AppendLine("INSERT OR IGNORE INTO $($table.TableName) (userid, groupid, odatatype, displayname) ")
+                            $null = $queryBuilder.AppendLine("VALUES ")
+                            
+                            foreach ($value in $relationship) {
+                                for ($i = 0; $i -lt $value.UserId.Count; $i++) {
+                                    $null = $queryBuilder.AppendLine("((SELECT id FROM users WHERE id = '$($value.UserId[$i])'), '$($value.groupid)', '$($value.odatatype[$i])', '$($value.displayname)'), ")
+                                }
+                            }
+                            
+                            Invoke-SqliteQuery -DataSource $database -Query ($queryBuilder.ToString().Trim().TrimEnd(","))
+                        }
                     }
                 }
+    
+                $report = [BackupReport]@{
+                    ScannedDateTime = Get-Date
+                    NumberOfUsersScanned = $backupOutput.Users.Count
+                    NumberOfGroupsScanned = $backupOutput.Groups.Count
+                    NumberOfGroupMembersScanned = ($backupOutput.UsersAndGroups.Users.Id | Select-Object -Unique).Count
+                }
+    
+                Write-Verbose "[$(Get-Date -Format s)] : $functionName : Generating backup report.."
+    
+                $report | Export-Csv -Path "$(Split-Path -Path (GetDatabasePath) -Parent)\Azure-AD-Backup-Report.csv" -Encoding utf8 -Force -NoTypeInformation -Append
+                
+                if ($ShowOutput.IsPresent) { return $backupOutput }
+            } else {
+                throw "Database path is empty. Run 'Set-BackupPath' cmdlet and set the backup path."
             }
-            
-            if ($ShowOutput.IsPresent) { return $backupOutput }
         } 
         catch {
             Write-Error "An Error Occurred at line $($_.InvocationInfo.ScriptLineNumber). Message: $($_.Exception.Message)."
