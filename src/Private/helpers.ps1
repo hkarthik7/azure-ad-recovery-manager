@@ -1,12 +1,10 @@
 function CreateDatabase {
-    $dbPath = "$($PWD.Path)\Azure-AD-Backup.db"
+    $dbPath = (GetDatabasePath)
     if (-not (Test-Path $dbPath)) {
         $database = New-Item -Path $dbPath -ItemType File | Select-Object -ExpandProperty FullName
     }
     else { $database = $dbPath }
-
-    [System.Environment]::SetEnvironmentVariable('AZURE_AD_BACKUP_DATABASE', $database, [System.EnvironmentVariableTarget]::Process)
-
+    
     return $database
 }
 
@@ -14,7 +12,7 @@ function GetDatabasePath {
     if (!([string]::IsNullOrEmpty($env:AZURE_AD_BACKUP_DATABASE))) {
         return $env:AZURE_AD_BACKUP_DATABASE
     } else {
-        return (CreateDatabase)
+        throw "You should set the backup path first by running 'Set-BackupPath' cmdlet."
     }
 }
 
