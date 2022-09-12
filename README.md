@@ -13,5 +13,19 @@ The recommendation is to create a storage account with Geo-Replication enabled f
 
 ![azure-ad-recovery-manager](./azure-ad-recovery-manager.PNG)
 
-We can also run the **recovery.ps1** locally and restore the deleted groups.
+We can also run the **restore.ps1** locally and restore the deleted groups. For this to work successfully we should have a copy of database locally. If the database is stored in storage account then it has to be downloaded and saved in the current working directory (Note that the name of database should be **Azure-AD-Backup.db** and if you've time stamped the database in storage account, then it has to be renamed).
 
+## Getting Started
+
+Install the Module from [PowerShell Gallery]().
+
+```pwsh
+# To install the module for current logged in user, run -
+C:\> Install-Module -Name azure-ad-recovery-manager -Scope CurrentUser -Repository PSGallery -Force
+```
+
+
+```pwsh
+# To install the module for all users, run -
+C:\> Install-Module -Name azure-ad-recovery-manager -Force
+```

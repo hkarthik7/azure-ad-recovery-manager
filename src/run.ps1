@@ -1,7 +1,16 @@
-if (Get-Module -Name azure-ad-recovery-manager) {
-    Remove-Module azure-ad-recovery-manager -Force
+$module = 'azure-ad-recovery-manager'
+$backupPath = "$($PWD.Path)\Azure-AD-Backup_$(Get-Date -Format yyyyMMdd_HHmmss)"
+
+if (Get-Module -Name $module) {
+    Remove-Module $module -Force
 }
 
-Import-Module -Name .\bin\dist\azure-ad-recovery-manager -Force
+if (!(Test-Path $backupPath)) {
+    $backupPath = New-Item -Path $backupPath -ItemType Directory | Select-Object -ExpandProperty FullName
+}
 
-$backupResult = Backup-AzADSecurityGroup -Verbose -ShowOutput
+Import-Module -Name ".\bin\dist\$module" -Force
+
+Set-BackupPath -FilePath $backupPath
+
+Backup-AzADSecurityGroup -Verbose -ShowOutput
