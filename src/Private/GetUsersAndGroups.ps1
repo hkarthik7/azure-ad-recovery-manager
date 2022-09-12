@@ -20,7 +20,7 @@ function GetUsersAndGroups {
             Write-Verbose "[$(Get-Date -Format s)] : $functionName : Determining users and groups.."
             $users = Get-AzADUser
             $groups = Get-AzADGroup
-            $groups = $groups | Where-Object { !($_.MailEnabled) }
+            # $groups = $groups | Where-Object { !($_.MailEnabled) }
 
             if ($Incremental.IsPresent) {
                 $backupUsers = Find-User -All
