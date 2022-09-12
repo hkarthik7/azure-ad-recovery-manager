@@ -1,4 +1,4 @@
-function Find-Group {
+function Find-RoleAssignment {
     [CmdletBinding(DefaultParameterSetName = "ByPattern")]
     param (
         [Parameter(Mandatory, ParameterSetName = "ByName")]
@@ -20,28 +20,39 @@ function Find-Group {
     process {
         try {
             if ((GetDatabasePath)) {
-                $table = 'groups'
+                $table = 'roleassignments'
+                $roleAssignments = @()
     
                 if ($PSCmdlet.ParameterSetName -eq 'ByName') {
-                    [Group[]] $res = Query -TableName $table -Condition "WHERE displayname = '$Name'"
-                    if ($res) { return $res }
-                    Write-Warning "Couldn't find group with name '$Name'"
+                    [Group[]] $res = Find-Group -Name $Name
+                    if ($res) {
+                        $res | ForEach-Object {
+                            $roleAssignments += Query -TableName $table -Condition "WHERE objectid = '$($_.Id)'"
+                        }
+                        return $roleAssignments
+                    }
                 }
     
                 if ($PSCmdlet.ParameterSetName -eq 'ByPattern') {
-                    [Group[]] $res = Query -TableName $table -Condition "WHERE displayname LIKE '$NamePattern%'"
-                    if ($res) { return $res }
-                    Write-Warning "Couldn't find group with name '$NamePattern'. If the name is valid, try using the pattern like %$NamePattern."
+                    [Group[]] $res = Find-Group -NamePattern $NamePattern
+                    if ($res) {
+                        $res | ForEach-Object {
+                            $roleAssignments += Query -TableName $table -Condition "WHERE objectid = '$($_.Id)'"
+                        }
+                        return $roleAssignments
+                    }
                 }
     
                 if ($PSCmdlet.ParameterSetName -eq 'ById') {
-                    [Group] $res = Query -TableName $table -Condition "WHERE id = '$Id'"
-                    if ($res) { return $res }
-                    Write-Warning "Couldn't find group with id '$Id'"
+                    [Group] $res = Find-Group -Id $Id
+                    if ($res) {
+                        $roleAssignments += Query -TableName $table -Condition "WHERE objectid = '$($res.Id)'"
+                        return $roleAssignments
+                    }
                 }
     
                 if (($PSCmdlet.ParameterSetName -eq 'All') -or ($All.IsPresent)) {
-                    return ([group[]] (Query $table))
+                    return (Query $table)
                 }
             } else {
                 throw "Couldn't find the database in provided path. Please run 'Set-BackupPath' cmdlet to set the database path."

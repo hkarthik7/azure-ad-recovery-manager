@@ -28,7 +28,8 @@ function Backup-AzADSecurityGroup {
                         "id VARCHAR(50) PRIMARY KEY",
                         "displayname TEXT",
                         "description TEXT",
-                        "mailnickname TEXT"
+                        "mailnickname TEXT",
+                        "mailenabled INTEGER",
                         "createddatetime TEXT",
                         "isassignabletorole INTEGER",
                         "owner TEXT",
@@ -46,6 +47,24 @@ function Backup-AzADSecurityGroup {
                         "userid VARCHAR(50) REFERENCES users(id)",
                         "PRIMARY KEY (groupid, userid)"
                     )
+                },
+                [Table]@{
+                    TableName = 'roleassignments'
+                    Columns = @(
+                        "roleassignmentName TEXT",
+                        "roleassignmentId TEXT VARCHAR(50) PRIMARY KEY",
+                        "scope TEXT",
+                        "displayname TEXT",
+                        "signinname TEXT",
+                        "roledefinitionname TEXT",
+                        "roledefinitionid TEXT",
+                        "objectid TEXT",
+                        "objecttype TEXT",
+                        "candelegate TEXT",
+                        "description TEXT",
+                        "conditionversion TEXT",
+                        "condition TEXT"                    
+                    )
                 }
             )
         }
@@ -62,6 +81,7 @@ function Backup-AzADSecurityGroup {
                 
                 # 2) Create tables (users, groups and usersandgroups)
                 foreach ($table in $schema.Tables) {
+                    if (!$Incremental.IsPresent) { DropTable -TableName $table.TableName }
                     CreateTable -TableName $table.TableName -Columns $table.Columns
                 
                     if ($table.TableName -eq 'users') {
@@ -83,12 +103,13 @@ function Backup-AzADSecurityGroup {
                 
                     if ($table.TableName -eq 'groups') {
                         if ($backupOutput.Groups) {
-                            $groupsDataTable = $backupOutput.Groups | Where-Object { !($_.MailEnabled) } | ForEach-Object {
+                            $groupsDataTable = $backupOutput.Groups | ForEach-Object {
                                 [Group]@{
                                     Id = $_.Id
                                     DisplayName = $_.DisplayName
                                     MailNickname = $_.MailNickname
                                     Description = $_.Description
+                                    MailEnabled = $_.MailEnabled
                                     CreatedDateTime = if (!([string]::IsNullOrEmpty($_.CreatedDateTime))) { (Get-Date $_.CreatedDateTime -Format s) } else { $null }
                                     IsAssignableToRole = $_.IsAssignableToRole
                                     Owner = $_.Owner
@@ -100,6 +121,11 @@ function Backup-AzADSecurityGroup {
                             
                             Invoke-SqliteBulkCopy -DataTable $groupsDataTable -DataSource $database -Table $table.TableName -ConflictClause Ignore -Force
                         }
+                    }
+
+                    if ($table.TableName -eq 'roleassignments') {
+                        $roleAssignments = Get-AzRoleAssignment | Out-DataTable
+                        Invoke-SqliteBulkCopy -DataTable $roleAssignments -DataSource $database -Table $table.TableName -ConflictClause Ignore -Force
                     }
                 
                     if ($table.TableName -eq 'usersandgroups') {
@@ -161,6 +187,7 @@ function Backup-AzADSecurityGroup {
                     NumberOfUsersScanned = $backupOutput.Users.Count
                     NumberOfGroupsScanned = $backupOutput.Groups.Count
                     NumberOfGroupMembersScanned = ($backupOutput.UsersAndGroups.Users.Id | Select-Object -Unique).Count
+                    NumberOfRoleAssignmentsScanned = $roleAssignments.Rows.Count
                 }
     
                 Write-Verbose "[$(Get-Date -Format s)] : $functionName : Generating backup report.."
