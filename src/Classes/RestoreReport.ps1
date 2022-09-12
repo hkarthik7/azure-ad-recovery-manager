@@ -1,7 +1,6 @@
 class RestoreReport {
     [datetime] $RestoredDateTime
     [string] $GroupsRestored
-    [string] $RoleAssignmentsRestored
     [string] $RoleAssignmentName
     [string] $RoleAssignmentId
     [string] $Scope

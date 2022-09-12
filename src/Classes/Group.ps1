@@ -3,6 +3,7 @@ class Group {
     [string] $DisplayName
     [string] $MailNickname
     [string] $Description
+    [bool] $MailEnabled
     [string] $CreatedDateTime
     [bool] $IsAssignableToRole
     [string] $Owner

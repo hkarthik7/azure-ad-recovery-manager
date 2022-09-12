@@ -3,4 +3,5 @@ class BackupReport {
     [int]$NumberOfUsersScanned
     [int] $NumberOfGroupsScanned
     [int] $NumberOfGroupMembersScanned
+    [int] $NumberOfRoleAssignmentsScanned
 }
