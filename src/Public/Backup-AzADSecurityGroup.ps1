@@ -1,6 +1,8 @@
 function Backup-AzADSecurityGroup {
     [CmdletBinding()]
     param (
+        [switch] $AsJob,
+        
         [switch] $Incremental,
 
         [switch] $ShowOutput
@@ -73,8 +75,16 @@ function Backup-AzADSecurityGroup {
     process {
         try {
             if ((GetDatabasePath)) {
-                if ($Incremental.IsPresent) { $backupOutput = GetUsersAndGroups -AsJob -Incremental }
-                else { $backupOutput = GetUsersAndGroups -AsJob }
+                if ($Incremental.IsPresent) {
+                    if ($AsJob.IsPresent) {
+                        $backupOutput = GetUsersAndGroups -AsJob -Incremental
+                    } else { $backupOutput = GetUsersAndGroups -Incremental }
+                }
+                else {
+                    if ($AsJob.IsPresent) {
+                        $backupOutput = GetUsersAndGroups -AsJob
+                    } else { $backupOutput = GetUsersAndGroups }
+                }
                     
                 # 1) Create database
                 $database = CreateDatabase
