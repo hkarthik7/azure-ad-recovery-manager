@@ -64,4 +64,4 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## RELATED LINKS
 
-https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Set-BackupPath.md
+[Set-BackupPath](https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Set-BackupPath.md)

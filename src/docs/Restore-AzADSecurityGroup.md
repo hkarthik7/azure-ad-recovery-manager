@@ -95,4 +95,4 @@ The account you are using should have necessary permissions to perform the resto
 
 ## RELATED LINKS
 
-https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Restore-AzADSecurityGroup.md
+[Restore-AzADSecurityGroup](https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Restore-AzADSecurityGroup.md)

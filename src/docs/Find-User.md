@@ -173,4 +173,4 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## RELATED LINKS
 
-https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Find-User.md
+[Find-User](https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Find-User.md)
