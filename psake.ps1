@@ -1,4 +1,4 @@
-# Ins some system tests won't run if TLS version isn't set.
+# In some system tests won't run if TLS version isn't set.
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # Install dependencies

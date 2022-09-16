@@ -7,8 +7,9 @@ param (
     [string] $ModuleName = (Get-ProjectName),
 
     [Parameter(Mandatory = $false, Position = 1)]
-    [ValidateSet("Major", "Minor", "Patch", "Build")]
-    [string] $Version = "Patch"
+    [ValidateSet("Major", "Minor", "Patch", "Build", "None")]
+    # This can be controlled in build script or in Manifest file
+    [string] $Version = "None"
 )
 
 $root = Split-Path $PSCommandPath
@@ -44,7 +45,9 @@ Task UpdateManifest {
     $functions = (Get-Command -Module $ModuleName).Name | Where-Object {$_ -like "*-*"}
 
     # Bump the version of the module
-    Step-ModuleVersion -Path (Get-PSModuleManifest -Path "$($PWD.Path)\bin\dist\") -By $Version
+    if ($Version -ne 'None') {
+        Step-ModuleVersion -Path (Get-PSModuleManifest -Path "$($PWD.Path)\bin\dist\") -By $Version
+    }
     if ($functions) {
         Set-ModuleFunction -Name (Get-PSModuleManifest -Path "$($PWD.Path)\bin\dist\") -FunctionsToExport $functions
     }
@@ -53,7 +56,7 @@ Task UpdateManifest {
 Task Analyze {
     # run PSScriptAnalyzer
     Write-Output "Running Static code analyzer"
-    Invoke-ScriptAnalyzer -Path .\bin\dist\azure-ad-recovery-manager -Recurse -ReportSummary
+    Invoke-ScriptAnalyzer -Path .\bin\dist\azure-ad-recovery-manager -Recurse -ReportSummary -ExcludeRule ("PSUseToExportFieldsInManifest")
 }
 
 Task Test {

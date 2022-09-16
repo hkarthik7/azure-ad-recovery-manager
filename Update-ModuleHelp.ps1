@@ -3,13 +3,13 @@ function Update-ModuleHelp {
     [CmdletBinding()]
     param (
         [string]
-        $ModuleName = (Join-Path -Path $PWD.Path -ChildPath (Get-ProjectName)),
+        $ModuleName = (Join-Path -Path "$($PWD.Path)\bin\dist\" -ChildPath (Get-ProjectName)),
 
         [string]
-        $Directory = (Join-Path -Path $PWD.Path -ChildPath "docs"),
+        $Directory = (Join-Path -Path "$($PWD.Path)\src\" -ChildPath "docs"),
 
         [string]
-        $OutputDirectory = (Join-Path -Path $PWD.Path -ChildPath "en-US"),
+        $OutputDirectory = (Join-Path -Path "$($PWD.Path)\src\" -ChildPath "en-US"),
 
         [switch]
         $CreateMarkDown,
