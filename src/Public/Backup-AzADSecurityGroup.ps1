@@ -1,22 +1,27 @@
 function Backup-AzADSecurityGroup {
-    [CmdletBinding()]
+    [CmdletBinding(HelpUri = "https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Backup-AzADSecurityGroup.md")]
     param (
         [switch] $AsJob,
         
         [switch] $Incremental,
 
-        [switch] $ShowOutput
+        [switch] $ShowOutput,
+
+        [ValidateRange(1,20)]
+        [int] $NumberOfJobs
     )
 
     begin {
         $functionName = $MyInvocation.MyCommand.Name
+        SetNumberOfJobs $NumberOfJobs
+
         Write-Verbose "[$(Get-Date -Format s)] : $functionName : Begin function.."
 
         $schema = [Schema]@{
             Tables = @(
                 [Table]@{
                     TableName = 'users'
-                    Columns = @(
+                    Columns   = @(
                         "id VARCHAR(50) PRIMARY KEY",
                         "displayname TEXT",
                         "mail TEXT",
@@ -26,7 +31,7 @@ function Backup-AzADSecurityGroup {
                 },
                 [Table]@{
                     TableName = 'groups'
-                    Columns = @(
+                    Columns   = @(
                         "id VARCHAR(50) PRIMARY KEY",
                         "displayname TEXT",
                         "description TEXT",
@@ -42,7 +47,7 @@ function Backup-AzADSecurityGroup {
                 },
                 [Table]@{
                     TableName = 'usersandgroups'
-                    Columns = @(
+                    Columns   = @(
                         "groupid VARCHAR(50)",
                         "displayname TEXT",
                         "odatatype TEXT",
@@ -52,7 +57,7 @@ function Backup-AzADSecurityGroup {
                 },
                 [Table]@{
                     TableName = 'roleassignments'
-                    Columns = @(
+                    Columns   = @(
                         "roleassignmentName TEXT",
                         "roleassignmentId TEXT VARCHAR(50) PRIMARY KEY",
                         "scope TEXT",
@@ -78,12 +83,14 @@ function Backup-AzADSecurityGroup {
                 if ($Incremental.IsPresent) {
                     if ($AsJob.IsPresent) {
                         $backupOutput = GetUsersAndGroups -AsJob -Incremental
-                    } else { $backupOutput = GetUsersAndGroups -Incremental }
+                    }
+                    else { $backupOutput = GetUsersAndGroups -Incremental }
                 }
                 else {
                     if ($AsJob.IsPresent) {
                         $backupOutput = GetUsersAndGroups -AsJob
-                    } else { $backupOutput = GetUsersAndGroups }
+                    }
+                    else { $backupOutput = GetUsersAndGroups }
                 }
                     
                 # 1) Create database
@@ -99,11 +106,11 @@ function Backup-AzADSecurityGroup {
                         if ($backupOutput.Users) {
                             $usersDataTable = $backupOutput.Users | ForEach-Object {
                                 [User]@{
-                                    Id = $_.Id
-                                    DisplayName = $_.DisplayName
-                                    Mail = if (!([string]::IsNullOrEmpty($_.Mail))) { $_.Mail } else { $null }
+                                    Id                = $_.Id
+                                    DisplayName       = $_.DisplayName
+                                    Mail              = if (!([string]::IsNullOrEmpty($_.Mail))) { $_.Mail } else { $null }
                                     UserPrincipalName = if (!([string]::IsNullOrEmpty($_.UserPrincipalName))) { $_.UserPrincipalName } else { $null }
-                                    OdataType = $_.OdataType
+                                    OdataType         = $_.OdataType
                                 }
                             } | Out-DataTable
                             
@@ -115,16 +122,16 @@ function Backup-AzADSecurityGroup {
                         if ($backupOutput.Groups) {
                             $groupsDataTable = $backupOutput.Groups | ForEach-Object {
                                 [Group]@{
-                                    Id = $_.Id
-                                    DisplayName = $_.DisplayName
-                                    MailNickname = $_.MailNickname
-                                    Description = $_.Description
-                                    MailEnabled = $_.MailEnabled
-                                    CreatedDateTime = if (!([string]::IsNullOrEmpty($_.CreatedDateTime))) { (Get-Date $_.CreatedDateTime -Format s) } else { $null }
+                                    Id                 = $_.Id
+                                    DisplayName        = $_.DisplayName
+                                    MailNickname       = $_.MailNickname
+                                    Description        = $_.Description
+                                    MailEnabled        = $_.MailEnabled
+                                    CreatedDateTime    = if (!([string]::IsNullOrEmpty($_.CreatedDateTime))) { (Get-Date $_.CreatedDateTime -Format s) } else { $null }
                                     IsAssignableToRole = $_.IsAssignableToRole
-                                    Owner = $_.Owner
-                                    RenewedDateTime = if (!([string]::IsNullOrEmpty($_.RenewedDateTime))) { (Get-Date $_.RenewedDateTime -Format s) } else { $null }
-                                    SecurityEnabled = $_.SecurityEnabled
+                                    Owner              = $_.Owner
+                                    RenewedDateTime    = if (!([string]::IsNullOrEmpty($_.RenewedDateTime))) { (Get-Date $_.RenewedDateTime -Format s) } else { $null }
+                                    SecurityEnabled    = $_.SecurityEnabled
                                     SecurityIdentifier = $_.SecurityIdentifier
                                 }
                             } | Out-DataTable
@@ -151,10 +158,10 @@ function Backup-AzADSecurityGroup {
                         if ($backupOutput.UsersAndGroups) {
                             $relationship = $backupOutput.UsersAndGroups | ForEach-Object {
                                 [UserAndGroup]@{
-                                    GroupId = $_.GroupId
+                                    GroupId     = $_.GroupId
                                     DisplayName = $_.GroupName
-                                    OdataType = @($_.Users.OdataType)
-                                    UserId = @($_.Users.Id)
+                                    OdataType   = @($_.Users.OdataType)
+                                    UserId      = @($_.Users.Id)
                                 }
                             }
     
@@ -169,7 +176,8 @@ function Backup-AzADSecurityGroup {
                                 foreach ($user in $entry.Users) {
                                     if ($user.Name.Contains("'")) {
                                         $null = $userTableQueryBuilder.AppendLine("('$($user.Id)', '$($user.OdataType)', '$($user.Name.Replace("'", "''"))'), ")
-                                    } else {
+                                    }
+                                    else {
                                         $null = $userTableQueryBuilder.AppendLine("('$($user.Id)', '$($user.OdataType)', '$($user.Name)'), ")
                                     }
                                 }
@@ -193,10 +201,10 @@ function Backup-AzADSecurityGroup {
                 }
     
                 $report = [BackupReport]@{
-                    ScannedDateTime = Get-Date
-                    NumberOfUsersScanned = $backupOutput.Users.Count
-                    NumberOfGroupsScanned = $backupOutput.Groups.Count
-                    NumberOfGroupMembersScanned = ($backupOutput.UsersAndGroups.Users.Id | Select-Object -Unique).Count
+                    ScannedDateTime                = Get-Date
+                    NumberOfUsersScanned           = $backupOutput.Users.Count
+                    NumberOfGroupsScanned          = $backupOutput.Groups.Count
+                    NumberOfGroupMembersScanned    = ($backupOutput.UsersAndGroups.Users.Id | Select-Object -Unique).Count
                     NumberOfRoleAssignmentsScanned = $roleAssignments.Rows.Count
                 }
     
@@ -205,7 +213,8 @@ function Backup-AzADSecurityGroup {
                 $report | Export-Csv -Path "$(Split-Path -Path (GetDatabasePath) -Parent)\Azure-AD-Backup-Report.csv" -Encoding utf8 -Force -NoTypeInformation -Append
                 
                 if ($ShowOutput.IsPresent) { return $backupOutput }
-            } else {
+            }
+            else {
                 throw "Database path is empty. Run 'Set-BackupPath' cmdlet and set the backup path."
             }
         } 

@@ -11,6 +11,7 @@ function GetUsersAndGroups {
         $WarningPreference = 'SilentlyContinue'
         $functionName = $MyInvocation.MyCommand.Name
         $usersAndGroups = @()
+        SetNumberOfJobs
 
         Write-Verbose "[$(Get-Date -Format s)] : $functionName : Begin function.."
     }
@@ -48,7 +49,8 @@ function GetUsersAndGroups {
                     Users  = $usersToAdd
                     Groups = $groupsToAdd
                 }   
-            } else {
+            }
+            else {
                 $backupOutput = [BackupOutput]@{
                     Users  = $users
                     Groups = $groups
@@ -65,7 +67,7 @@ function GetUsersAndGroups {
                 }
 
                 # $numberOfJobs = Get-CimInstance -ClassName Win32_Processor | Select-Object -ExpandProperty NumberOfLogicalProcessors
-                $numberOfJobs = 10
+                $numberOfJobs = $env:AZURE_AD_BACKUP_JOBS_COUNT
                 if ($backupOutput.Groups.Count -le $numberOfJobs) {
                     $numberOfJobs = 1
                 }

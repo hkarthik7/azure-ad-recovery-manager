@@ -11,7 +11,8 @@ function CreateDatabase {
 function GetDatabasePath {
     if (!([string]::IsNullOrEmpty($env:AZURE_AD_BACKUP_DATABASE))) {
         return $env:AZURE_AD_BACKUP_DATABASE
-    } else {
+    }
+    else {
         throw "You should set the backup path first by running 'Set-BackupPath' cmdlet."
     }
 }
@@ -42,4 +43,9 @@ function Query([string] $TableName, [string] $Condition) {
 
 function IsGroupExists([string] $GroupId) {
     return ([bool] (Get-AzADGroup -ObjectId $GroupId -ErrorAction SilentlyContinue))
+}
+
+function SetNumberOfJobs([int] $NumberOfJobs) {
+    if ($NumberOfJobs -le 0) { $NumberOfJobs = 10 }
+    [System.Environment]::SetEnvironmentVariable('AZURE_AD_BACKUP_JOBS_COUNT', $NumberOfJobs, [System.EnvironmentVariableTarget]::Process)    
 }
