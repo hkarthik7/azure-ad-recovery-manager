@@ -4,7 +4,7 @@
 [CmdletBinding()]
 param (
     [Parameter(Mandatory = $false, Position = 0)]
-    [string] $ModuleName = (Get-ProjectName),
+    [string] $ModuleName = (Get-ProjectName -Path "$($PWD.Path)\src"),
 
     [Parameter(Mandatory = $false, Position = 1)]
     [ValidateSet("Major", "Minor", "Patch", "Build", "None")]
