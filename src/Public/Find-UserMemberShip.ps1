@@ -1,6 +1,7 @@
 function Find-UserMemberShip {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseOutputTypeCorrectly', '', Justification = 'Output type varies for each return value')]
-    [CmdletBinding(DefaultParameterSetName = "ByPattern")]
+    [CmdletBinding(DefaultParameterSetName = "ByPattern",
+        HelpUri = "https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Find-UserMemberShip.md")]
     param (
         [Parameter(Mandatory, ParameterSetName = "ByName")]
         [ValidateNotNullOrEmpty()]
@@ -30,12 +31,12 @@ function Find-UserMemberShip {
                         $result = Query -TableName $table -Condition "WHERE userid = '$($_.Id)'"
                         $obj = [PSCustomObject]@{
                             UserName = $_.DisplayName
-                            UserId = $_.Id
+                            UserId   = $_.Id
                         }
             
                         $groups = [PSCustomObject]@{
                             GroupName = $result.DisplayName
-                            GroupId = $result.GroupId
+                            GroupId   = $result.GroupId
                         }
                         Add-Member -InputObject $obj -MemberType NoteProperty -Name "Membership" -Value $groups -TypeName PSCustomObject
                         $results += $obj
@@ -43,7 +44,8 @@ function Find-UserMemberShip {
         
                     return $results
                 }
-            } else {
+            }
+            else {
                 throw "Couldn't find the database in provided path. Please run 'Set-BackupPath' cmdlet to set the database path."
             }
         }

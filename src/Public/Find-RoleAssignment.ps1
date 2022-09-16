@@ -1,5 +1,8 @@
 function Find-RoleAssignment {
-    [CmdletBinding(DefaultParameterSetName = "ByPattern")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseOutputTypeCorrectly', '', 
+        Justification = 'Returning multiple output types and it does not have to be explicitly specified.')]
+    [CmdletBinding(DefaultParameterSetName = "ByPattern",
+        HelpUri = "https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Find-RoleAssignment.md")]
     param (
         [Parameter(Mandatory, ParameterSetName = "ByName")]
         [ValidateNotNullOrEmpty()]
@@ -54,7 +57,8 @@ function Find-RoleAssignment {
                 if (($PSCmdlet.ParameterSetName -eq 'All') -or ($All.IsPresent)) {
                     return (Query $table)
                 }
-            } else {
+            }
+            else {
                 throw "Couldn't find the database in provided path. Please run 'Set-BackupPath' cmdlet to set the database path."
             }
         }

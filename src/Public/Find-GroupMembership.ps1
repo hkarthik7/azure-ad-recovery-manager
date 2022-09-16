@@ -1,6 +1,7 @@
 function Find-GroupMemberShip {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseOutputTypeCorrectly', '', Justification = 'Output type varies for each return value')]
-    [CmdletBinding(DefaultParameterSetName = "ByPattern")]
+    [CmdletBinding(DefaultParameterSetName = "ByPattern",
+    HelpUri = "https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Find-GroupMemberShip.md")]
     param (
         [Parameter(Mandatory, ParameterSetName = "ByName")]
         [ValidateNotNullOrEmpty()]
@@ -32,13 +33,13 @@ function Find-GroupMemberShip {
                             [Member[]] $members = @()
     
                             $groupObject = [PSCustomObject]@{
-                                GroupId = $result.groupid | Select-Object -First 1
+                                GroupId   = $result.groupid | Select-Object -First 1
                                 GroupName = $result.displayname | Select-Object -First 1
                             }
     
                             $result | ForEach-Object {
                                 $members += [Member]@{
-                                    UserId = $_.userid
+                                    UserId   = $_.userid
                                     UserName = Find-User -Id $_.userid | Select-Object -ExpandProperty DisplayName
                                 }
                             }
@@ -46,12 +47,14 @@ function Find-GroupMemberShip {
                             Add-Member -InputObject $groupObject -MemberType NoteProperty -Name "Members" -Value $members -TypeName PSCustomObject
                             $results += $groupObject
     
-                        } else { Write-Warning "Couldn't find any results for group: $($_.DisplayName)." }
+                        }
+                        else { Write-Warning "Couldn't find any results for group: $($_.DisplayName)." }
                     }
         
                     return $results
                 }
-            } else {
+            }
+            else {
                 throw "Couldn't find the database in provided path. Please run 'Set-BackupPath' cmdlet to set the database path."
             }
         }

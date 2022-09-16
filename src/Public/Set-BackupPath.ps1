@@ -1,5 +1,6 @@
 function Set-BackupPath {
-    [CmdletBinding()]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'No state changing functions')]
+    [CmdletBinding(HelpUri = "https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Set-BackupPath.md")]
     param (
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ValueFromPipeline, Position = 0)]
         [ValidateNotNullOrEmpty()]

@@ -1,5 +1,9 @@
 function Restore-AzADSecurityGroup {
-    [CmdletBinding(DefaultParameterSetName = 'ByName')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseUsingScopeModifierInNewRunspaces', '', Justification = 'Using ArgumentList')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '', 
+        Justification = 'All the paramerers are declared and used within scriptblock')]
+    [CmdletBinding(DefaultParameterSetName = 'ByName',
+        HelpUri = "https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Restore-AzADSecurityGroup.md")]
     param (
         [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'ByName')]
         [ValidateNotNullOrEmpty()]
@@ -55,20 +59,20 @@ function Restore-AzADSecurityGroup {
                             }
         
                             $allGroups += [Group]@{
-                                Id = $newGroup.Id
-                                DisplayName = $newGroup.DisplayName
-                                MailNickname = $newGroup.MailNickname
-                                Description = $newGroup.Description
-                                CreatedDateTime = $newGroup.CreatedDateTime
+                                Id                 = $newGroup.Id
+                                DisplayName        = $newGroup.DisplayName
+                                MailNickname       = $newGroup.MailNickname
+                                Description        = $newGroup.Description
+                                CreatedDateTime    = $newGroup.CreatedDateTime
                                 IsAssignableToRole = $newGroup.IsAssignableToRole
-                                Owner = $newGroup.Owner
-                                RenewedDateTime = $newGroup.RenewedDateTime
-                                SecurityEnabled = $newGroup.SecurityEnabled
+                                Owner              = $newGroup.Owner
+                                RenewedDateTime    = $newGroup.RenewedDateTime
+                                SecurityEnabled    = $newGroup.SecurityEnabled
                                 SecurityIdentifier = $newGroup.SecurityIdentifier
                             }
         
                             Invoke-SqliteQuery -DataSource (GetDatabasePath) -Query "DELETE FROM groups WHERE id = '$groupId'"
-                            Invoke-SqliteBulkCopy -DataTable ($allGroups| Out-DataTable) -DataSource (GetDatabasePath) -Table 'groups' -ConflictClause Ignore -Force
+                            Invoke-SqliteBulkCopy -DataTable ($allGroups | Out-DataTable) -DataSource (GetDatabasePath) -Table 'groups' -ConflictClause Ignore -Force
         
                             if ($members) {
                                 Add-AzADGroupMember -TargetGroupObjectId $newGroup.Id -MemberObjectId $members.Members.UserId -WarningAction SilentlyContinue
@@ -78,14 +82,15 @@ function Restore-AzADSecurityGroup {
                                     )"
                                 }
                             }
-                        } else {
+                        }
+                        else {
                             Write-Warning "Group $((Find-Group -Id $groupId).DisplayName) already exists."
                         }
                     }
     
                     $report = [RestoreReport]@{
                         RestoredDateTime = Get-Date
-                        GroupsRestored = $allGroups.DisplayName -join "`n"
+                        GroupsRestored   = $allGroups.DisplayName -join "`n"
                     }
     
                     if ($roleAssignment -and $job) {
@@ -108,10 +113,12 @@ function Restore-AzADSecurityGroup {
     
                     return $allGroups
                     
-                } else {
+                }
+                else {
                     Write-Warning "No groups found to restore."
                 }
-            } else {
+            }
+            else {
                 throw "Couldn't find the database in provided path. Please run 'Set-BackupPath' cmdlet to set the database path."
             }
         }

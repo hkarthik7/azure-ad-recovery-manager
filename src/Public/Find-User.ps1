@@ -1,5 +1,6 @@
 function Find-User {
-    [CmdletBinding(DefaultParameterSetName = "ByPattern")]
+    [CmdletBinding(DefaultParameterSetName = "ByPattern",
+        HelpUri = "https://github.com/hkarthik7/azure-ad-recovery-manager/blob/main/src/docs/Find-User.md")]
     param (
         [Parameter(Mandatory, ParameterSetName = "ByName")]
         [ValidateNotNullOrEmpty()]
@@ -63,7 +64,8 @@ function Find-User {
                 if (($PSCmdlet.ParameterSetName -eq 'All') -or ($All.IsPresent)) {
                     return ([User[]] (Query $table))
                 }
-            } else {
+            }
+            else {
                 throw "Couldn't find the database in provided path. Please run 'Set-BackupPath' cmdlet to set the database path."
             }
         }
