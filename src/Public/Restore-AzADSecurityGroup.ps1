@@ -14,6 +14,8 @@ function Restore-AzADSecurityGroup {
     )
     
     process {
+        ValidateLogin
+        
         try {
             if ((GetDatabasePath)) {
                 if ($PSCmdlet.ParameterSetName -eq 'ByName') {

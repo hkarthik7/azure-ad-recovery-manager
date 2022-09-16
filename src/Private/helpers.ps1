@@ -13,7 +13,7 @@ function GetDatabasePath {
         return $env:AZURE_AD_BACKUP_DATABASE
     }
     else {
-        throw "You should set the backup path first by running 'Set-BackupPath' cmdlet."
+        throw "Please set the backup path first by running 'Set-BackupPath' cmdlet."
     }
 }
 
@@ -48,4 +48,19 @@ function IsGroupExists([string] $GroupId) {
 function SetNumberOfJobs([int] $NumberOfJobs) {
     if ($NumberOfJobs -le 0) { $NumberOfJobs = 10 }
     [System.Environment]::SetEnvironmentVariable('AZURE_AD_BACKUP_JOBS_COUNT', $NumberOfJobs, [System.EnvironmentVariableTarget]::Process)    
+}
+
+function ValidateLogin() {
+    try {
+        Get-AzTenant -ErrorAction Stop | Out-Null
+    }
+    catch {
+        if ($_.Exception.Message.Contains('is not recognized as a name of a cmdlet')) {
+            throw "An error occurred: Couldn't find the Azure module 'Az' in the current session. Please install the module or import it if already installed and try again."
+        }
+
+        if ($_.Exception.Message.Contains('Run Connect-AzAccount to login.')) {
+            throw "An error occurred: Please login to your azure tenant to perform the backup or restore operation. Run Connect-AzAccount -TenantId <TenantId> to login."
+        }
+    }
 }

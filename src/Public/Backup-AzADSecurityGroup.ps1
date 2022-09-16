@@ -12,6 +12,8 @@ function Backup-AzADSecurityGroup {
     )
 
     begin {
+        ValidateLogin
+        
         $functionName = $MyInvocation.MyCommand.Name
         SetNumberOfJobs $NumberOfJobs
 
