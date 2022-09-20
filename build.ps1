@@ -46,10 +46,10 @@ Task UpdateManifest {
 
     # Bump the version of the module
     if ($Version -ne 'None') {
-        Step-ModuleVersion -Path (Get-PSModuleManifest -Path "$($PWD.Path)\bin\dist\") -By $Version
+        Step-ModuleVersion -Path (Get-PSModuleManifest -Path ".\bin\dist\") -By $Version
     }
     if ($functions) {
-        Set-ModuleFunction -Name (Get-PSModuleManifest -Path "$($PWD.Path)\bin\dist\") -FunctionsToExport $functions
+        Set-ModuleFunction -Name (Get-PSModuleManifest -Path ".\bin\dist\") -FunctionsToExport $functions
     }
 }
 
